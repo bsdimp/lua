@@ -53,6 +53,7 @@
 ** 'l_intfitsf' checks whether a given integer is in the range that
 ** can be converted to a float without rounding. Used in comparisons.
 */
+#if !defined(l_intfitsf) && !defined(LUA_AVOID_FLOAT)
 
 /* number of bits in the mantissa of a float */
 #define NBM		(l_floatatt(MANT_DIG))
@@ -77,6 +78,12 @@
 
 #define l_intfitsf(i)	1
 
+#endif
+
+#endif /* !defined(l_intfitsf) && !defined LUA_AVOID_FLOAT */
+
+#ifndef l_intfitsf
+#define l_intfitsf(i)	1
 #endif
 
 

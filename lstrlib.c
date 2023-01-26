@@ -1121,6 +1121,7 @@ static void addquoted (luaL_Buffer *b, const char *s, size_t len) {
 }
 
 
+#ifndef LUA_AVOID_FLOAT
 /*
 ** Serialize a floating-point number in such a way that it can be
 ** scanned back by Lua. Use hexadecimal format for "common" numbers
@@ -1149,7 +1150,7 @@ static int quotefloat (lua_State *L, char *buff, lua_Number n) {
   /* for the fixed representations */
   return l_sprintf(buff, MAX_ITEM, "%s", s);
 }
-
+#endif
 
 static void addliteral (lua_State *L, luaL_Buffer *b, int arg) {
   switch (lua_type(L, arg)) {
@@ -1162,9 +1163,13 @@ static void addliteral (lua_State *L, luaL_Buffer *b, int arg) {
     case LUA_TNUMBER: {
       char *buff = luaL_prepbuffsize(b, MAX_ITEM);
       int nb;
+#ifndef LUA_AVOID_FLOAT
       if (!lua_isinteger(L, arg))  /* float? */
         nb = quotefloat(L, buff, lua_tonumber(L, arg));
       else {  /* integers */
+#else
+      {
+#endif
         lua_Integer n = lua_tointeger(L, arg);
         const char *format = (n == LUA_MININTEGER)  /* corner case? */
                            ? "0x%" LUA_INTEGER_FRMLEN "x"  /* use hex */
@@ -1259,10 +1264,12 @@ static int str_format (lua_State *L) {
           nb = lua_number2strx(L, buff, maxitem, form,
                                   luaL_checknumber(L, arg));
           break;
+#ifndef LUA_AVOID_FLOAT
         case 'f':
           maxitem = MAX_ITEMF;  /* extra space for '%f' */
           buff = luaL_prepbuffsize(&b, maxitem);
           /* FALLTHROUGH */
+#endif
         case 'e': case 'E': case 'g': case 'G': {
           lua_Number n = luaL_checknumber(L, arg);
           addlenmod(form, LUA_NUMBER_FRMLEN);
@@ -1352,7 +1359,11 @@ static const union {
 /* dummy structure to get native alignment requirements */
 struct cD {
   char c;
-  union { double d; void *p; lua_Integer i; lua_Number n; } u;
+  union {
+#ifndef LUA_AVOID_FLOAT
+	  double d;
+#endif
+	  void *p; lua_Integer i; lua_Number n; } u;
 };
 
 #define MAXALIGN	(offsetof(struct cD, u))
@@ -1362,8 +1373,10 @@ struct cD {
 ** Union for serializing floats
 */
 typedef union Ftypes {
+#ifndef LUA_AVOID_FLOAT
   float f;
   double d;
+#endif
   lua_Number n;
 } Ftypes;
 
@@ -1452,8 +1465,10 @@ static KOption getoption (Header *h, const char **fmt, int *size) {
     case 'j': *size = sizeof(lua_Integer); return Kint;
     case 'J': *size = sizeof(lua_Integer); return Kuint;
     case 'T': *size = sizeof(size_t); return Kuint;
+#ifndef LUA_AVOID_FLOAT
     case 'f': *size = sizeof(float); return Kfloat;
     case 'd': *size = sizeof(double); return Kfloat;
+#endif
     case 'n': *size = sizeof(lua_Number); return Kfloat;
     case 'i': *size = getnumlimit(h, fmt, sizeof(int)); return Kint;
     case 'I': *size = getnumlimit(h, fmt, sizeof(int)); return Kuint;
@@ -1584,9 +1599,13 @@ static int str_pack (lua_State *L) {
         Ftypes u;
         char *buff = luaL_prepbuffsize(&b, size);
         lua_Number n = luaL_checknumber(L, arg);  /* get argument */
+#ifndef LUA_AVOID_FLOAT
         if (size == sizeof(u.f)) u.f = (float)n;  /* copy it into 'u' */
         else if (size == sizeof(u.d)) u.d = (double)n;
         else u.n = n;
+#else
+	u.n = n;
+#endif
         /* move 'u' to final result, correcting endianness if needed */
         copywithendian(buff, (char *)&u, size, h.islittle);
         luaL_addsize(&b, size);
@@ -1717,9 +1736,13 @@ static int str_unpack (lua_State *L) {
         Ftypes u;
         lua_Number num;
         copywithendian((char *)&u, data + pos, size, h.islittle);
+#ifndef LUA_AVOID_FLOAT
         if (size == sizeof(u.f)) num = (lua_Number)u.f;
         else if (size == sizeof(u.d)) num = (lua_Number)u.d;
         else num = u.n;
+#else
+	num = u.n;
+#endif
         lua_pushnumber(L, num);
         break;
       }
