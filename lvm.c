@@ -52,7 +52,10 @@
 /*
 ** 'l_intfitsf' checks whether a given integer is in the range that
 ** can be converted to a float without rounding. Used in comparisons.
+** May be defined in luaconf.h if this test is incorrect for custom
+** LUA_FLOAT_TYPEs.
 */
+#if !defined(l_intfitsf)
 
 /* number of bits in the mantissa of a float */
 #define NBM		(l_floatatt(MANT_DIG))
@@ -79,6 +82,7 @@
 
 #endif
 
+#endif /* !defined(l_intfitsf) */
 
 /*
 ** Try to convert a value from string to a number value.
