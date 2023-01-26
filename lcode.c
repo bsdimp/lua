@@ -603,6 +603,7 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
   TValue o;
   lua_Integer ik;
   setfltvalue(&o, r);
+#ifndef LUA_AVOID_FLOAT
   if (!luaV_flttointeger(r, &ik, F2Ieq))  /* not an integral value? */
     return addk(fs, &o, &o);  /* use number itself as key */
   else {  /* must build an alternative key */
@@ -616,6 +617,12 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
                 l_mathop(fabs)(r) >= l_mathop(1e6));
     return addk(fs, &kv, &o);
   }
+#else
+  /*
+  ** When we're avoiding floats, allow any collision since floats are ints.
+  */
+  return addk(fs, &o, &o);  /* use number itself as key */
+#endif
 }
 
 
